@@ -456,7 +456,10 @@ class Family_trainer:
         for i in range(self.nb_strong):
             strong=agents_best_score_sorted[-i]
             if strong.name in weak_names:
-                if strong.best_score>1.5*strong.compute_current_score():
+                sco=strong.compute_current_score()
+                #ex:  sco=-10.  strong.best_score > -10+5
+                #ex:  sco=+10.  strong.best_score > +10+5
+                if strong.best_score>sco+np.abs(sco)*0.5:
                     decadent_names.append(strong.name)
                     decadents.append(strong)
                     print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
