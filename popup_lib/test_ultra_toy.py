@@ -21,10 +21,9 @@ class Agent_ultra_toy(pop.Abstract_Agent):
     def set_and_perturb_famparams(self,famparams,period_count):
         self.famparams=famparams
 
-        if np.random.random()<0.5:
-            self.famparams["add0"]+=1
-        else:
-            self.famparams["add1"]-=1
+
+        self.famparams["add0"]+=np.random.choice([+1,-1])
+        self.famparams["add1"]+=np.random.choice([+1,-1])
 
     #Abstract_Agent: obligatoire
     def optimize_and_return_score(self) -> float:
@@ -39,7 +38,7 @@ class Agent_ultra_toy(pop.Abstract_Agent):
 
     #Abstract_Agent: obligatoire
     def get_copy_of_weights(self):
-        return self.wei0,self.wei1
+        return [self.wei0,self.wei1]
 
 
     #Abstract_Agent: facultatif: pour ajouter des métriques

@@ -446,6 +446,8 @@ class Family_trainer:
         Quand un agent est trop souvant décadent, on l'élimine (tout en l'enregistrant pour la fin car il a pu obtenir un score intéressant)
         """
 
+
+
         weaks=agents_current_score_sorted[:self.nb_weak]
         weak_names={weak.name for weak in weaks}
 
