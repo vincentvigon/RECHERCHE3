@@ -1,6 +1,5 @@
 
 from popup_lib.popup import *
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -46,7 +45,7 @@ class Agent_ultra_toy(Abstract_Agent):
 
 def main():
     agents=[Agent_ultra_toy(), Agent_ultra_toy()]
-    family_trainer=Family_trainer(agents)
+    family_trainer=Family_trainer(agents,period_duration="10 steps")
 
     for _ in range(10):
         family_trainer.period()
@@ -62,14 +61,14 @@ def main():
 
 
     ###Test
-    best_agent=family_trainer.get_best_agent()
-    scores=[]
-    for _ in range(5):
-        scores.append(best_agent.return_score())
-    fig,ax=plt.subplots()
-    ax.set_title("best agent test")
-    ax.plot(scores)
-    plt.show()
+    # best_agent=family_trainer.get_best_agent()
+    # scores=[]
+    # for _ in range(5):
+    #     scores.append(best_agent.return_score())
+    # fig,ax=plt.subplots()
+    # ax.set_title("best agent test")
+    # ax.plot(scores)
+    # plt.show()
 
 
 

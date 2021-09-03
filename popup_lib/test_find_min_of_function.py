@@ -13,11 +13,10 @@ def loss_fn(x:tf.Variable,y:tf.Variable):
 class Minimizer_agent(Abstract_Agent):
 
     def __init__(self,perturb_famparams):
-        Minimizer_agent.perturb_famparams=perturb_famparams
+        Minimizer_agent.set_and_perturb_famparams=perturb_famparams
         self.weight0 = tf.Variable(np.random.uniform(-1,1))
         self.weight1 = tf.Variable(np.random.uniform(-1,1))
         self.famparams={"dir0":np.random.uniform(0,1e-1),"dir1":np.random.uniform(0,1e-1)}
-
 
     def get_famparams(self):
         return self.famparams
@@ -25,7 +24,9 @@ class Minimizer_agent(Abstract_Agent):
     def set_famparams(self, dico):
         self.famparams=dico
 
-    def perturb_famparams(self):
+
+
+    def set_and_perturb_famparams(self, famparam, period_count: int) -> None:
         raise Exception("to be defined in the constructor")
 
 
@@ -63,7 +64,6 @@ def plot_loss_func(ax,r):
     ax.set_xlabel(r'$\theta_0$')
     ax.set_ylabel(r'$\theta_1$')
     ax.contourf(xx, yy, Q, 50, cmap='autumn')
-
 
 def main_by_hand():
     agent=Minimizer_agent(None)
@@ -128,11 +128,11 @@ def main():
 
     fam_trainers=[
                   Family_trainer(quiet_agents,
-                                 period_for_each="10 steps",
+                                 period_duration="10 steps",
                                  color="g"
                                  ),
                   Family_trainer(exited_agents,
-                                 period_for_each="10 steps",
+                                 period_duration="10 steps",
                                  color="k"
                                  )
                   ]

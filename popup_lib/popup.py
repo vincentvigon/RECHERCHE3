@@ -232,6 +232,7 @@ class Agent_wraper:
 
 
     def compute_current_score(self):
+        # en par défaut self.current_score_fn c'est la moyenne des 3 dernier scores courants
         return self.current_score_fn(self.current_scores)
 
     #
@@ -430,17 +431,20 @@ class Family_trainer:
 
     def mutation(self):
 
+
         agents_best_score_sorted = sorted(self.agents.values(), key=lambda a_w: a_w.best_score)
         agents_current_score_sorted = sorted(self.agents.values(), key=lambda a_w: a_w.compute_current_score())
 
         """il est possible que la liste des strongs et la liste des weak aient des éléments en commum.
-        * Quand nb_weak+nb_strong > len(self.agents)
-        * Ou quand un agent est en sur-apprentissage: sont current_score est bas, mais sont best_score est haut
-        Ce n'est pas génant, même une mutation d'un agent vers lui-même est intéressante
+        notamment quand nb_weak+nb_strong > len(self.agents)
+        Ce n'est pas génant, même une mutation d'un agent vers lui-même est intéressante.
+        
+        On dit qu'un agent est décadent quand il est dans les strong (classement relatif à son best score)
+        mais aussi dans les weak (classement relatif à ses derniers score courants)
+        et que son best score est sensiblement plus grand que son current_score (1.5 fois plus grand)
+        Quand un agent est trop souvant décadent, on l'élimine (tout en l'enregistrant pour la fin car il a pu obtenir un score intéressant)
         """
 
-        #strongs=agents_best_score_sorted[-self.nb_strong:]
-        #strong_names={strong.name for strong in strongs}
         weaks=agents_current_score_sorted[:self.nb_weak]
         weak_names={weak.name for weak in weaks}
 
@@ -449,9 +453,10 @@ class Family_trainer:
         for i in range(self.nb_strong):
             strong=agents_best_score_sorted[-i]
             if strong.name in weak_names:
-                decadent_names.append(strong.name)
-                decadents.append(strong)
-                print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
+                if strong.best_score>1.5*strong.compute_current_score():
+                    decadent_names.append(strong.name)
+                    decadents.append(strong)
+                    print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
 
         strong_non_decadent=[]
         for strong in agents_best_score_sorted:
