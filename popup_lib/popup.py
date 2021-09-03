@@ -439,6 +439,7 @@ class Family_trainer:
         notamment quand nb_weak+nb_strong > len(self.agents)
         Ce n'est pas génant, même une mutation d'un agent vers lui-même est intéressante.
         
+        
         On dit qu'un agent est décadent quand il est dans les strong (classement relatif à son best score)
         mais aussi dans les weak (classement relatif à ses derniers score courants)
         et que son best score est sensiblement plus grand que son current_score (1.5 fois plus grand)
