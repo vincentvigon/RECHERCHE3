@@ -86,6 +86,9 @@ def make_positive_channels_0_2(A):
     res= tf.stack([A0,A1,A2],axis=2)
     return res
 
+
+
+
 def reflexive_padding(W, k, pad,for_solver:bool):
     right_value = W[:, -1, :]
     left_value = W[:, 0, :]
