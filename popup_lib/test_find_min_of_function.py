@@ -12,8 +12,10 @@ def loss_fn(x:tf.Variable,y:tf.Variable):
 
 class Minimizer_agent(Abstract_Agent):
 
-    def __init__(self,perturb_famparams):
-        Minimizer_agent.set_and_perturb_famparams=perturb_famparams
+    def __init__(self, custom_set_perturb_famparams):
+        #on veut pouvoir créer des agents avec des méthodes de perturbation différentes
+        Minimizer_agent.set_and_perturb_famparams=custom_set_perturb_famparams
+
         self.weight0 = tf.Variable(np.random.uniform(-1,1))
         self.weight1 = tf.Variable(np.random.uniform(-1,1))
         self.famparams={"dir0":np.random.uniform(0,1e-1),"dir1":np.random.uniform(0,1e-1)}
@@ -113,11 +115,13 @@ def main_by_hand():
 
 def main():
 
-    def perturb_quiet(agent:Minimizer_agent):
+    def perturb_quiet(agent:Minimizer_agent,famparams,turn_count):
+        agent.famparams=famparams
         agent.famparams["dir0"] *= np.random.uniform(0.8, 1.2)
         agent.famparams["dir1"] *= np.random.uniform(0.8, 1.2)
 
-    def perturb_exited(agent: Minimizer_agent):
+    def perturb_exited(agent: Minimizer_agent,famparams,turn_count):
+        agent.famparams=famparams
         agent.famparams["dir0"] *= np.random.uniform(0.5, 1.5)
         agent.famparams["dir1"] *= np.random.uniform(0.5, 1.5)
 

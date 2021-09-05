@@ -431,7 +431,6 @@ class Family_trainer:
 
     def mutation(self):
 
-
         agents_best_score_sorted = sorted(self.agents.values(), key=lambda a_w: a_w.best_score)
         agents_current_score_sorted = sorted(self.agents.values(), key=lambda a_w: a_w.compute_current_score())
 
@@ -445,8 +444,6 @@ class Family_trainer:
         et que son best score est sensiblement plus grand que son current_score (1.5 fois plus grand)
         Quand un agent est trop souvant décadent, on l'élimine (tout en l'enregistrant pour la fin car il a pu obtenir un score intéressant)
         """
-
-
 
         weaks=agents_current_score_sorted[:self.nb_weak]
         weak_names={weak.name for weak in weaks}
@@ -462,7 +459,7 @@ class Family_trainer:
                 if strong.best_score>sco+np.abs(sco)*0.5:
                     decadent_names.append(strong.name)
                     decadents.append(strong)
-                    print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
+                    print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence+1}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
 
         strong_non_decadent=[]
         for strong in agents_best_score_sorted:
