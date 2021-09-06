@@ -9,12 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 #import inspect
-
-
 print("Popup loaded!")
 #todo la moyenne des meilleurs ne doit pas se faire avec des records trop éloigné
-#problème: comment juger ???
-
 #todo metric multi-dim
 
 class History:
@@ -431,19 +427,15 @@ class Family_trainer:
 
     def mutation(self):
 
+        """"""
+
+        """
+        * les weaks sont les pires agents (selon de leur score courants)
+        * les decadents sont les meilleurs agents (selon leur score record), mais qui font également partis des weaks
+        * les strong sont les meilleurs agents (selon leur score record) qui ne sont pas décadent.
+        """
         agents_best_score_sorted = sorted(self.agents.values(), key=lambda a_w: a_w.best_score)
         agents_current_score_sorted = sorted(self.agents.values(), key=lambda a_w: a_w.compute_current_score())
-
-        """il est possible que la liste des strongs et la liste des weak aient des éléments en commum.
-        notamment quand nb_weak+nb_strong > len(self.agents)
-        Ce n'est pas génant, même une mutation d'un agent vers lui-même est intéressante.
-        
-        
-        On dit qu'un agent est décadent quand il est dans les strong (classement relatif à son best score)
-        mais aussi dans les weak (classement relatif à ses derniers score courants)
-        et que son best score est sensiblement plus grand que son current_score (1.5 fois plus grand)
-        Quand un agent est trop souvant décadent, on l'élimine (tout en l'enregistrant pour la fin car il a pu obtenir un score intéressant)
-        """
 
         weaks=agents_current_score_sorted[:self.nb_weak]
         weak_names={weak.name for weak in weaks}
@@ -461,31 +453,50 @@ class Family_trainer:
                     decadents.append(strong)
                     print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence+1}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
 
+
         strong_non_decadent=[]
         for strong in agents_best_score_sorted:
             if strong.name not in decadent_names:
                 strong_non_decadent.append(strong)
         strongs=strong_non_decadent[-self.nb_strong:]
-        if len(strongs)<self.nb_strong:
+        if len(strongs)==0:
+            print("ATTENTION: il n'y a aucun strong, seulement des décadents. Un agent aléatoire sera désigné comme strong")
+            strongs.append(agents_best_score_sorted[np.random.randint(len(agents_best_score_sorted))])
+        elif len(strongs)<self.nb_strong:
             print(f"ATTENTION: il y a seulement {len(strongs)} strong non-décadent, ce qui est inférieur au nombre de strong réclamé: {self.nb_strong}")
+
 
         print(", mutations:", end="")
 
 
+
+        """Les weak prennent l'état d'un strong aléatoire"""
         for weak in weaks:
             strong  = strongs[np.random.randint(len(strongs))]
             weak.load_from_another(strong,self._period_count)
             self.registration(weak,False)
 
 
+
+        """Les décadents sont séparés en 2 parties:
+         * les décadents-récurrents  sont ceux qui on été trop de fois décadent de manière consécutives. La limite étant l'attribut  `self.max_nb_consecutive_decadence` 
+         * les décadents-non-récurrents sont les autres.
+         
+         Voilà ce qui leur arrivent:
+         * Les décadents-récurrents repartent de l'état d'un strong aléatoire.
+           Leur état record est sauvegardé pour la fin, si l'utilisateur demande de regarder le meilleurs état, 
+           y compris parmis les états des décadents-récurrent
+        * Les décadents-non-récurrent repartent de leur propre état record.
+          C'est une bonne chose pour lui, car il aura la possibilité d'évoluer ailleurs grâce aux gradients stochastiques. 
+         """
         for decadent in decadents:
             if decadent.nb_consecutive_decadence<self.max_nb_consecutive_decadence:
                 decadent.load_from_myself( self._period_count)
                 decadent.nb_consecutive_decadence += 1
                 self.registration(decadent, True)
+
             else:
                 strong = strongs[np.random.randint(len(strongs))]
-                #pour éventuellement récupérer ce décadent à la toute fin
                 if self.best_decadent_score is None or strong.best_score>self.best_decadent_score:
                     self.best_decadent_score=strong.best_score
                     self.best_decadent_weights=decadent.best_weights

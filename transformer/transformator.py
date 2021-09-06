@@ -5,79 +5,57 @@ import matplotlib.pyplot as plt
 import time
 
 
-def random_orthodonal_matrices(batch_size,recurence_len):
-    liste=[]
-    while len(liste)<batch_size:
-        transitions = tf.random.uniform([recurence_len, recurence_len])
-        U, _, _ = np.linalg.svd(transitions)
-        liste.append(U)
-    return tf.stack(liste)
-
-def data_generation_complex(batch_size, recurence_len, seq_len):
-
-    assert recurence_len<seq_len
-    transitions=random_orthodonal_matrices(batch_size,recurence_len)
-    init=tf.random.uniform([batch_size,recurence_len],-1,1)
-
-    res=[init]
-    while len(res)*recurence_len<seq_len:
-        last=res[-1] #(batch,recurence_len)
-        #sum_k transitions[i,j,k]*last[i,k]
-        current= tf.reduce_sum(transitions*last[:,tf.newaxis,:],axis=2)
-        res.append(current)
-
-    res=tf.stack(res) #(seq_len/3,batch_size,recurence_len)
-    res=tf.transpose(res,[1,0,2])
-    res=tf.reshape(res,[batch_size,-1])
-
-    return res[:,:seq_len]
-
-class Data_generation_simple:
+class DataGenerator:
 
     def __init__(self,batch_size,seq_len):
         self.batch_size=batch_size
         self.seq_len=seq_len
 
     def __call__(self):
-        init=tf.random.uniform([self.batch_size],-1,1)
-        pente=tf.random.uniform([self.batch_size],-1,1)/self.seq_len
-        ind=tf.range(self.seq_len,dtype=tf.float32)
-        return init[:,tf.newaxis]+pente[:,tf.newaxis]*ind[tf.newaxis,:]
+        X=tf.random.uniform([self.batch_size,self.seq_len,1])
+        Y=X[:,::2,:]
+        Y=tf.keras.layers.UpSampling1D(2)(Y)
+        return X,Y
 
-def test_data_generation_simple():
-    batch_size, recurence_len, seq_len = 5,2,61
-    #res=data_generation_complex(batch_size, recurence_len, seq_len)
-    generator=Data_generation_simple(batch_size,seq_len)
-    res=generator()
 
-    print("shape (batch_size,seq_len)",res.shape)
-
-    fig,axs=plt.subplots(batch_size,1)
+def positionnal_encoding(seq_len):
     ind=tf.range(seq_len)
-    for i in range(batch_size):
-        axs[i].plot(ind,res[i])
+    res=(-1)**ind
+    return tf.cast(res,tf.float32)
 
-    plt.show()
+#
+# def get_angles(pos, i, d_model):
+#   angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
+#   return pos * angle_rates
+#
+# def positional_encoding(position, d_model):
+#   angle_rads = get_angles(np.arange(position)[:, np.newaxis],
+#                           np.arange(d_model)[np.newaxis, :],
+#                           d_model)
+#
+#   # apply sin to even indices in the array; 2i
+#   angle_rads[:, 0::2] = np.sin(angle_rads[:, 0::2])
+#
+#   # apply cos to odd indices in the array; 2i+1
+#   angle_rads[:, 1::2] = np.cos(angle_rads[:, 1::2])
+#
+#   pos_encoding = angle_rads[np.newaxis, ...]
+#
+#   return tf.cast(pos_encoding, dtype=tf.float32)
+
+def test_positionnal_encoding():
+    res=positionnal_encoding(10)
+    print(res)
+
+test_positionnal_encoding()
 
 
+def test_data_generator():
+    data_generator=DataGenerator(1,10)
+    X,Y=data_generator()
+    print(X)
+    print(Y)
 
-
-def very_simple_embeding(x, d_model):
-    # x.shape=(batch_size,seq_len)
-    one = tf.ones([1, 1, d_model])
-    return x[:, :, tf.newaxis] * one
-
-
-def very_simple_unembeding(x):
-    return tf.reduce_mean(x, axis=2)
-
-
-def test_embed():
-    temp_x = tf.constant([[1., 2, 3], [2, 4, 6]])
-    temp_x_emb = very_simple_embeding(temp_x, 4)
-    print(temp_x_emb)
-    temp_x_recov = very_simple_unembeding(temp_x_emb)
-    print(temp_x_recov)
 
 
 def scaled_dot_product_attention(v, k, q, mask):
@@ -171,12 +149,6 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         return output, attention_weights
 
 
-def test_multihead_attention():
-    temp_mha = MultiHeadAttention(d_model=512, num_heads=8)
-    y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
-    out, attn = temp_mha(y, k=y, q=y, mask=None)
-    print("out,attn:", out.shape, attn.shape)
-
 
 def point_wise_feed_forward_network(d_model, dff):
     return tf.keras.Sequential([
@@ -185,9 +157,9 @@ def point_wise_feed_forward_network(d_model, dff):
     ])
 
 
-class PredictorLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
-        super(PredictorLayer, self).__init__()
+class TransformatorLayer(tf.keras.layers.Layer):
+    def __init__(self,  d_model, num_heads, dff, rate=0.1):
+        super(TransformatorLayer, self).__init__()
 
         self.mha1 = MultiHeadAttention(d_model, num_heads)
 
@@ -199,10 +171,9 @@ class PredictorLayer(tf.keras.layers.Layer):
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout3 = tf.keras.layers.Dropout(rate)
 
-    def __call__(self, x, training, look_ahead_mask):
-        # enc_output.shape == (batch_size, input_seq_len, d_model)
+    def __call__(self, x, training):
 
-        attn1, attn_weights_block1 = self.mha1(x, x, x, look_ahead_mask)  # (batch_size, target_seq_len, d_model)
+        attn1, attn_weights_block1 = self.mha1(x, x, x, None)  # (batch_size, target_seq_len, d_model)
         attn1 = self.dropout1(attn1, training=training)
         out1 = self.layernorm1(attn1 + x)
 
@@ -212,69 +183,48 @@ class PredictorLayer(tf.keras.layers.Layer):
 
         return out3, attn_weights_block1
 
-
-class PredictorViaAttention(tf.keras.layers.Layer):
+class Transformator(tf.keras.layers.Layer):
 
     def __init__(self, seq_len,num_layers, d_model, num_heads, dff, rate=0.1):
-        super(PredictorViaAttention, self).__init__()
+        super(Transformator, self).__init__()
 
         self.seq_len=seq_len
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.dec_layers = [PredictorLayer(d_model, num_heads, dff, rate)
+        self.embed=tf.keras.layers.Dense(d_model)
+        self.unembed=tf.keras.layers.Dense(1)
+
+        self.dec_layers = [TransformatorLayer(d_model, num_heads, dff, rate)
                            for _ in range(num_layers)]
         self.dropout = tf.keras.layers.Dropout(rate)
 
-        self.look_ahead_mask=self.create_look_ahead_mask(self.seq_len)[tf.newaxis,tf.newaxis,:,:]
+        self.pos_enc=positionnal_encoding(self.seq_len)
 
-    def create_look_ahead_mask(self,size):
-        mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
-        return mask  # (seq_len, seq_len)
+
 
     def __call__(self, x, training):
-        # x.shape = (batch_size,seq_len)
+        batch_size=x.shape[0]
+        pos_enc=tf.ones([batch_size,1,1])*self.pos_enc[tf.newaxis,:,tf.newaxis]
 
-        x = very_simple_embeding(x, self.d_model)
-        # x.shape = (batch_size,seq_len,d_model)
 
         attention_weights = {}
+
+        x=tf.concat([x,pos_enc],axis=2)
+
+        x=self.embed(x)
 
         x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
         x = self.dropout(x, training=training)
 
         for i in range(self.num_layers):
-            x, attention_weight = self.dec_layers[i](x, training, self.look_ahead_mask)
+            x, attention_weight = self.dec_layers[i](x, training)
 
             attention_weights[f'decoder_layer{i + 1}_block1'] = attention_weight
 
-        # x.shape == (batch_size, target_seq_len, d_model)
-
-        x = very_simple_unembeding(x)
+        x=self.unembed(x)
 
         return x, attention_weights
-
-
-
-class AgentGRU:
-
-    def __init__(self):
-
-        super(AgentGRU,self).__init__()
-        nb_layers=4
-        d_model=64
-
-        self.layers=[]
-
-        for _ in range(nb_layers):
-            self.layers.append(tf.keras.layers.GRU(d_model,return_sequences=True))
-
-    def __call__(self,x):
-        y=x
-        for layer in self.layers:
-            y=layer(y)
-
-        return y
 
 
 
@@ -287,21 +237,18 @@ class Trainer:
         self.train_losses=[]
 
         self.predictor=predictor
-        self.optimizer=tf.keras.optimizers.Adam(1e-3)
+        self.optimizer=tf.keras.optimizers.Adam(1e-4)
 
         self.batch_size=64
         self.recurence_len=2
-        self.seq_len=60
 
 
-    @tf.function
-    def train_step(self, X):
-        X_inp = X[:, :-1]
-        X_real = X[:, 1:]
+    #@tf.function
+    def train_step(self, X, Y):
 
         with tf.GradientTape() as tape:
-            predictions, _ = self.predictor(X_inp,False)
-            loss = tf.reduce_mean((X_real-predictions)**2)
+            predictions, _ = self.predictor(X, True)
+            loss = tf.reduce_mean((Y - predictions) ** 2)
 
         gradients = tape.gradient(loss, self.predictor.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.predictor.trainable_variables))
@@ -314,43 +261,50 @@ class Trainer:
             start = time.time()
 
             while time.time()-start<minutes_per_epoch*60:
-                X= self.data_generator()
-                loss=self.train_step(X)
+                X,Y= self.data_generator()
+                loss=self.train_step(X,Y)
                 self.train_losses.append(loss)
 
             print(f'duration of the {epoch}-th epoch: {time.time() - start:.2f} secs\n')
             plt.plot(self.train_losses)
+            plt.yscale("log")
             plt.show()
 
 
     def eval(self):
-        X = self.data_generator()
-        X = X[:,1:]
+        X,Y = self.data_generator()
         pred,_=self.predictor(X,False)
-        ind=tf.range(self.seq_len-1)
+        ind=tf.range(X.shape[1])
         nb=5
         fig,axs=plt.subplots(nb,1)
         print(pred.shape)
         for i in range(nb):
-            axs[i].plot(ind,X[i,:])
-            axs[i].plot(ind, pred[i, :])
+            axs[i].plot(ind,Y[i,:,0],label="true")
+            axs[i].plot(ind, pred[i, :,0],label="pred")
 
+        axs[0].legend()
         plt.show()
-
 
 def test_agent():
     seq_len=60
     batch_size=64
 
-    data_generator=Data_generation_simple(batch_size,seq_len)
-    predictor=PredictorViaAttention(seq_len-1,num_layers=2, d_model=4, num_heads=2, dff=12, rate=0.1)
+    data_generator=DataGenerator(batch_size,seq_len)
+    predictor=Transformator(seq_len,num_layers=10 ,d_model=64, num_heads=4, dff=64, rate=0)
 
     trainer=Trainer(predictor,data_generator)
-    trainer.main_loop(0.2,4)
+    try:
+        trainer.main_loop(0.2,2)
+    except KeyboardInterrupt:
+        pass
     trainer.eval()
 
-if __name__ == "__main__":
-    #test_multihead_attention()
-    #test_data_generation_simple()
-    test_agent()
+test_agent()
+
+
+
+
+
+
+
 
