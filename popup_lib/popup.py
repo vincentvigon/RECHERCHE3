@@ -57,7 +57,6 @@ class History:
             metric_timeFlags.add(len(metric_times)-1)
             self.metrics_flags[name]=metric_timeFlags
 
-import tensorflow as tf
 def is_number(x):
     return isinstance(x, (int, float, np.float32, np.float64, np.int32, np.int64))
 
@@ -383,7 +382,7 @@ class Family_trainer:
                 if self.period_duration_unity == "second":
                     #on cumule le temps. Avantage: si une pédiode dépasse (à cause d'un step un peu long), la suivante devra être plus courte.
                     #inconvénient: il ne faut pas changer la period_duration au milieu de l'apprentissage
-                    #todo changer en utilisant un delta time
+                    #todo changer en utilisant un delta-time plutôt qu'un time absolu (plus robuste pour les modifications futures)
                     ok = self.history.get_local_time() < self.period_duration*self._period_count
                 else:
                     ok = step_count < self.period_duration
@@ -451,7 +450,6 @@ class Family_trainer:
                 if strong.best_score>sco+np.abs(sco)*0.5:
                     decadent_names.append(strong.name)
                     decadents.append(strong)
-                    print(f"\n/!\ L'agent:{strong.name} est décadent pour la {strong.nb_consecutive_decadence+1}-ième fois consécutive; record:{strong.best_score}, scores courants:{strong.current_scores}, best_famparams: {strong.best_famparams} ")
 
 
         strong_non_decadent=[]
@@ -491,11 +489,14 @@ class Family_trainer:
          """
         for decadent in decadents:
             if decadent.nb_consecutive_decadence<self.max_nb_consecutive_decadence:
-                decadent.load_from_myself( self._period_count)
                 decadent.nb_consecutive_decadence += 1
+                print(f"\n/!\ L'agent:{decadent.name} est décadent pour la {decadent.nb_consecutive_decadence}-ième fois consécutive; record:{decadent.best_score}, scores courants:{decadent.current_scores}, best_famparams: {decadent.best_famparams} ")
+
+                decadent.load_from_myself( self._period_count)
                 self.registration(decadent, True)
 
             else:
+                print(f"\n/!\ L'agent:{decadent.name} est décadent-recurent car il a été {decadent.nb_consecutive_decadence} fois décadent de manière consécutive. Il est évacué de la compétition. Son record:{decadent.best_score}, ses scores courants:{decadent.current_scores}, best_famparams: {decadent.best_famparams} ")
                 strong = strongs[np.random.randint(len(strongs))]
                 if self.best_decadent_score is None or strong.best_score>self.best_decadent_score:
                     self.best_decadent_score=strong.best_score
