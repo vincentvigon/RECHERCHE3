@@ -496,7 +496,7 @@ class Family_trainer:
                 self.registration(decadent, True)
 
             else:
-                print(f"\n/!\ L'agent:{decadent.name} est décadent-recurent car il a été {decadent.nb_consecutive_decadence} fois décadent de manière consécutive. Il est évacué de la compétition. Son record:{decadent.best_score}, ses scores courants:{decadent.current_scores}, best_famparams: {decadent.best_famparams} ")
+                print(f"\n/!\ L'agent:{decadent.name} est décadent-recurent car il a été `max_nb_consecutive_decadence`={self.max_nb_consecutive_decadence} fois décadents de manière consécutive. Il est évacué de la compétition. Son record:{decadent.best_score}, ses scores courants:{decadent.current_scores}, best_famparams: {decadent.best_famparams} ")
                 strong = strongs[np.random.randint(len(strongs))]
                 if self.best_decadent_score is None or strong.best_score>self.best_decadent_score:
                     self.best_decadent_score=strong.best_score
