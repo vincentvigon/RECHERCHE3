@@ -97,7 +97,7 @@ class Agent:
         else:
             self.model_1: tf.keras.Model = make_mlp(self.model_input_dim, 1)
             self.dH1 = lambda q: self._der(self.model_1,q)
-            self.dH1= lambda q: self._der(self.model_1,q)
+            #self.dH1= lambda q: self._der(self.model_1,q)
 
             if self.use_a_second_model:
                 self.model_2: tf.keras.Model = make_mlp(self.model_input_dim, 1)

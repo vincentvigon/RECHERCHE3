@@ -60,6 +60,7 @@ class History:
 def is_number(x):
     return isinstance(x, (int, float, np.float32, np.float64, np.int32, np.int64))
 
+
 class Abstract_Agent(ABC):
 
     @abstractmethod
@@ -271,7 +272,7 @@ class Agent_wraper:
 
 def get_a_name(i:int):
     #les premiers noms sont des lettres, ensuite c'est a1,b1,c1,etc
-    letters="a b c d e f g h i j k l m n o p q r s t u v w x y z A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
+    letters="a b c d e f g h i j k l m n o p q r s t u v w x y z A B C D E F G H I J K L M N O P Q R S T U V w X Y Z"
     letters=letters.split(" ")
     nb=len(letters)
     if i<nb:

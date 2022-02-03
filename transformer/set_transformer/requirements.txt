@@ -1,0 +1,8 @@
+codecov
+scipy
+seaborn
+tf-nightly-gpu==2.2.0.dev20200218
+tensorflow-datasets
+tqdm==4.43.0
+pytest
+pillow
